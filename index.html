@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Parkinson VR - Ritmik Rehabilitasyon v2.5</title>
+    <title>Parkinson VR - Hassas Senkronizasyon v3.0</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <style>
         #start-overlay {
@@ -66,18 +66,18 @@
 
     <div id="start-overlay">
         <h2 style="margin-bottom: 5px;">Parkinson VR Klinik Egzersiz</h2>
-        <p style="color: #8b949e; margin-bottom: 25px;">Parametreleri hastanın klinik durumuna göre ayarlayın.</p>
+        <p style="color: #8b949e; margin-bottom: 25px;">Hassas Alan ve Ritim Senkronizasyonlu Model</p>
         
         <div class="setup-group">
-            <label for="size-scale">Top Büyüklüğü (Görüş Alanı): 1 - 10</label>
+            <label for="size-scale">Top Büyüklüğü (Ekran Alanı): 1 - 10</label>
             <input type="range" id="size-scale" min="1" max="10" value="5">
-            <div class="range-labels"><span>1 (%1 - Çok Küçük)</span><span>10 (%10 - Çok Büyük)</span></div>
+            <div class="range-labels"><span>1 (Ekranın %5'i)</span><span>10 (Ekranın %20'si)</span></div>
         </div>
 
         <div class="setup-group">
-            <label for="speed-scale">Ritim ve Hareket Hızı: 1 - 10</label>
-            <input type="range" id="speed-scale" min="1" max="10" value="5">
-            <div class="range-labels"><span>1 (Yavaş)</span><span>10 (Hızlı)</span></div>
+            <label for="speed-scale">Ritim ve Top Hızı (BPM): 1 - 10</label>
+            <input type="range" id="speed-scale" min="1" max="10" value="4">
+            <div class="range-labels"><span>1 (Çok Yavaş)</span><span>10 (Dinamik/Hızlı)</span></div>
         </div>
 
         <button class="btn" onclick="startApp()">Egzersizi Başlat (30 Saniye)</button>
@@ -106,22 +106,22 @@
 
             <a-entity 
                 id="gaze-raycaster" 
-                raycaster="objects: .targetable; interval: 50" 
+                raycaster="objects: .targetable; interval: 30" 
                 position="0 0 0">
             </a-entity>
 
         </a-entity>
 
         <a-entity 
-            geometry="primitive: plane; width: 5; height: 3" 
-            material="color: #21262d; opacity: 0.1; shader: flat" 
-            position="0 1.6 -3.01">
+            geometry="primitive: plane; width: 6; height: 4" 
+            material="color: #21262d; opacity: 0.05; shader: flat" 
+            position="0 1.6 -3.02">
         </a-entity>
 
         <a-entity 
             id="rhythm-target"
             class="targetable"
-            geometry="primitive: sphere; radius: 0.15" 
+            geometry="primitive: sphere; radius: 0.3" 
             material="color: #00ff00; shader: flat" 
             position="0 1.6 -3">
         </a-entity>
@@ -143,12 +143,12 @@
         const centerPointEntity = document.getElementById('gaze-center-point');
         const timerRingEntity = document.getElementById('gaze-timer-ring');
 
-        let maxAmplitudeX = 1.8; 
-        let maxAmplitudeY = 0.7; 
+        let maxAmplitudeX = 1.6; 
+        let maxAmplitudeY = 0.6; 
         let score = 0;
         let isTargetHovered = false;
 
-        // İsabet Kontrolleri
+        // Temas Algılayıcıları
         raycasterEntity.addEventListener('raycaster-intersection', function () {
             isTargetHovered = true;
             targetEntity.setAttribute('material', 'color', '#388bfd'); 
@@ -165,19 +165,17 @@
             const sizeValue = parseInt(document.getElementById('size-scale').value);
             const speedValue = parseInt(document.getElementById('speed-scale').value);
 
-            // Küre Boyut Formülü (Skala 1 = 0.03 [Ekranın %1'i], Skala 10 = 0.45 [Ekranın %10'undan fazla])
-            // Farkı hissedilir kılmak için doğrusal değil katlanarak artan (eksponansiyel) bir ölçek kullandım.
-            const targetRadius = 0.015 + (Math.pow(sizeValue, 1.5) * 0.0135);
+            // 3 Metre Uzaklık İçin Hassas Alan Hesaplaması (%5 alan için r=0.22, %20 alan için r=0.68)
+            // Böylece skala 1 seçildiğinde %5, 10 seçildiğinde tam %20 ekran alan kaplaması simüle edilir.
+            const targetRadius = 0.18 + ((sizeValue - 1) * (0.52 / 9));
             targetEntity.setAttribute('geometry', 'radius', targetRadius);
 
-            // Hız Ayarı
-            bpm = 35 + (speedValue * 6);
+            // Klinik Hız Ölçeği (Skala 1 = 40 BPM [Çok Yavaş], Skala 10 = 85 BPM)
+            bpm = 35 + (speedValue * 5);
 
-            // Arayüzü Kapat
             document.getElementById('start-overlay').style.display = 'none';
             
-            // --- VR BOX İÇİN EKRANI OTOMATİK İKİYE BÖLME KOMUTU ---
-            // Tarayıcı hazır olur olmaz sahneyi doğrudan VR Stereoscopic moduna geçmeye zorlar
+            // VR Bölünmüş Ekran Aktivasyonu
             if (sceneEntity.hasLoaded) {
                 sceneEntity.enterVR();
             } else {
@@ -185,12 +183,12 @@
                     sceneEntity.enterVR();
                 });
             }
-            // -----------------------------------------------------
             
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             isPlaying = true;
             startTime = performance.now();
 
+            // Metronom Tetikleyicisi
             const intervalTime = (60 / bpm) * 1000;
             metronomeId = setInterval(playMetronomeTick, intervalTime);
             scoreId = setInterval(checkScore, 50);
@@ -230,12 +228,18 @@
                 return;
             }
 
+            // Halka Sayacı Küçültme Algoritması
             let progress = timeLeft / runDuration; 
             let currentRingRadiusOuter = 0.01 + (progress * 0.025);
             timerRingEntity.setAttribute('geometry', 'radiusOuter', currentRingRadiusOuter);
 
-            // Sonsuzluk (8) Hareketi
-            const timeFactor = elapsedTime * 1.5 * (bpm / 60);
+            // --- RİTME TAM BAĞLI HAREKET KONTROLÜ ---
+            // 'timeFactor' doğrudan BPM'e göre kalibre edildi. 
+            // Matematiksel salınım hızı artik metronom hızıyla birebir paralel akacak.
+            const speedMultiplier = (bpm / 60) * Math.PI * 0.5; 
+            const timeFactor = elapsedTime * speedMultiplier;
+            
+            // Sonsuzluk (8) Hareketi Formülasyonu
             let currentX = Math.sin(timeFactor) * maxAmplitudeX;
             let currentY = 1.6 + (Math.sin(timeFactor * 2) * maxAmplitudeY);
 
@@ -249,7 +253,6 @@
             clearInterval(metronomeId);
             clearInterval(scoreId);
             
-            // VR Modundan Çıkış Yap
             sceneEntity.exitVR();
             
             const overlay = document.getElementById('start-overlay');
