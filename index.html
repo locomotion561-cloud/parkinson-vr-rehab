@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Parkinson VR - Özelleştirilebilir Ritmik Kafa Takibi</title>
+    <title>Parkinson VR - Ritmik Rehabilitasyon v2.0</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <style>
         #start-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(13, 17, 23, 0.95);
+            background: #0d1117;
             z-index: 9999;
             display: flex;
             flex-direction: column;
@@ -19,110 +19,109 @@
             font-family: Arial, sans-serif;
             text-align: center;
             padding: 20px;
-            overflow-y: auto;
+            box-sizing: border-box;
         }
         .setup-group {
-            margin: 15px 0;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 15px;
-            border-radius: 8px;
-            width: 80%;
+            margin: 20px 0;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 20px;
+            border-radius: 12px;
+            width: 85%;
             max-width: 400px;
         }
         .setup-group label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             font-weight: bold;
+            font-size: 1.1rem;
+            color: #58a6ff;
         }
         .setup-group input {
             width: 100%;
+            height: 10px;
             cursor: pointer;
         }
         .range-labels {
             display: flex;
             justify-content: space-between;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             color: #8b949e;
-            margin-top: 5px;
+            margin-top: 8px;
         }
         .btn {
-            padding: 15px 40px;
-            font-size: 1.3rem;
+            padding: 18px 45px;
+            font-size: 1.4rem;
             background-color: #238636;
             color: white;
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            margin-top: 20px;
+            margin-top: 25px;
             font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
     </style>
 </head>
 <body>
 
     <div id="start-overlay">
-        <h2>Parkinson Egzersiz Ayarları</h2>
-        <p>Hastanın durumuna göre parametreleri belirleyip başlatın.</p>
+        <h2 style="margin-bottom: 5px;">Parkinson VR Klinik Egzersiz</h2>
+        <p style="color: #8b949e; margin-bottom: 25px;">Parametreleri hastanın klinik durumuna göre ayarlayın.</p>
         
         <div class="setup-group">
-            <label for="size-scale">Hedef (Top) Büyüklüğü (1-10)</label>
+            <label for="size-scale">Top Büyüklüğü (Tolerans): 1 - 10</label>
             <input type="range" id="size-scale" min="1" max="10" value="5">
-            <div class="range-labels"><span>En Küçük (Zor)</span><span>En Büyük (Kolay)</span></div>
+            <div class="range-labels"><span>1 (Zor / Küçük)</span><span>10 (Kolay / Büyük)</span></div>
         </div>
 
         <div class="setup-group">
-            <label for="speed-scale">Egzersiz / Ritim Hızı (1-10)</label>
+            <label for="speed-scale">Ritim ve Hareket Hızı: 1 - 10</label>
             <input type="range" id="speed-scale" min="1" max="10" value="5">
-            <div class="range-labels"><span>Yavaş (Yumuşak)</span><span>Hızlı (Dinamik)</span></div>
+            <div class="range-labels"><span>1 (Yavaş / Rijidite İçin)</span><span>10 (Hızlı / Dinamik)</span></div>
         </div>
 
-        <button class="btn" onclick="startApp()">Egzersizi Başlat (30sn)</button>
+        <button class="btn" onclick="startApp()">Egzersizi Başlat (30 Saniye)</button>
     </div>
 
     <a-scene>
         
-        <a-sky color="#0d1117"></a-sky>
-        <a-grid color="#21262d"></a-grid>
+        <a-sky color="#0a0c10"></a-sky>
+        <a-grid color="#161b22"></a-grid>
 
         <a-entity camera look-controls position="0 1.6 0">
-            <a-cursor 
-                id="gaze-cursor"
-                raycaster="objects: .targetable; interval: 100"
-                position="0 0 -1"
-                geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.02"
-                material="color: #ff3333; shader: flat; opacity: 0.8">
-            </a-cursor>
+            
+            <a-entity 
+                id="gaze-center-point"
+                geometry="primitive: ring; radiusInner: 0.002; radiusOuter: 0.006"
+                material="color: #ff3333; shader: flat"
+                position="0 0 -1">
+            </a-entity>
 
-            <a-text 
-                id="vr-score-text" 
-                value="Skor: 0" 
-                position="-0.4 0.6 -1.5" 
-                scale="0.4 0.4 0.4" 
-                color="#ffffff" 
-                font="monospace">
-            </a-text>
+            <a-entity 
+                id="gaze-timer-ring"
+                geometry="primitive: ring; radiusInner: 0.03; radiusOuter: 0.035"
+                material="color: #ffcc00; shader: flat; opacity: 0.6"
+                position="0 0 -1">
+            </a-entity>
 
-            <a-text 
-                id="vr-timer-text" 
-                value="Süre: 30" 
-                position="0.1 0.6 -1.5" 
-                scale="0.4 0.4 0.4" 
-                color="#ffcc00" 
-                font="monospace">
-            </a-text>
+            <a-entity 
+                id="gaze-raycaster" 
+                raycaster="objects: .targetable; interval: 50" 
+                position="0 0 0">
+            </a-entity>
+
         </a-entity>
 
         <a-entity 
-            id="track-line"
-            geometry="primitive: box; width: 4; height: 2; depth: 0.005" 
-            material="color: #388bfd; opacity: 0.05; shader: flat" 
-            position="0 1.6 -3">
+            geometry="primitive: plane; width: 5; height: 3" 
+            material="color: #21262d; opacity: 0.1; shader: flat" 
+            position="0 1.6 -3.01">
         </a-entity>
 
         <a-entity 
             id="rhythm-target"
             class="targetable"
-            geometry="primitive: sphere; radius: 0.18" 
+            geometry="primitive: sphere; radius: 0.15" 
             material="color: #00ff00; shader: flat" 
             position="0 1.6 -3">
         </a-entity>
@@ -132,102 +131,69 @@
     <script>
         let audioCtx;
         let isPlaying = false;
-        let bpm = 60; 
+        let bpm = 60;
+        let runDuration = 30; // Toplam süre 30 saniye
+        let startTime = 0;
         
-        // Zamanlayıcı Değişkenleri
-        let timeLeft = 30;
-        let countdownId, metronomeId, scoreId;
-
+        let metronomeId, scoreId;
+        
         const targetEntity = document.getElementById('rhythm-target');
-        const cursorEntity = document.getElementById('gaze-cursor');
-        const vrScoreDisplay = document.getElementById('vr-score-text');
-        const vrTimerDisplay = document.getElementById('vr-timer-text');
+        const raycasterEntity = document.getElementById('gaze-raycaster');
+        const centerPointEntity = document.getElementById('gaze-center-point');
+        const timerRingEntity = document.getElementById('gaze-timer-ring');
 
-        let maxAmplitudeX = 1.8; // Yatay hareket sınırı
-        let maxAmplitudeY = 0.8; // Dikey (yukarı-aşağı) hareket sınırı
+        let maxAmplitudeX = 1.8; // Yatay genişlik bound
+        let maxAmplitudeY = 0.7; // Dikey yükseklik bound
         let score = 0;
         let isTargetHovered = false;
 
-        // İntersection (Temas) Algılayıcıları
-        cursorEntity.addEventListener('raycaster-intersection', function () {
+        // Hedef Yakalama ve Biofeedback Tetikleyicileri
+        raycasterEntity.addEventListener('raycaster-intersection', function () {
             isTargetHovered = true;
-            targetEntity.setAttribute('material', 'color', '#388bfd');
-            cursorEntity.setAttribute('material', 'color', '#00ff00');
+            targetEntity.setAttribute('material', 'color', '#388bfd'); // İsabet halinde mavi olur
+            centerPointEntity.setAttribute('material', 'color', '#00ff00'); // İmleç yeşile döner
         });
 
-        cursorEntity.addEventListener('raycaster-intersection-cleared', function () {
+        raycasterEntity.addEventListener('raycaster-intersection-cleared', function () {
             isTargetHovered = false;
-            targetEntity.setAttribute('material', 'color', '#00ff00');
-            cursorEntity.setAttribute('material', 'color', '#ff3333');
+            targetEntity.setAttribute('material', 'color', '#00ff00'); // Kaçarsa yeşile döner
+            centerPointEntity.setAttribute('material', 'color', '#ff3333'); // İmleç kırmızıya döner
         });
 
         function startApp() {
-            // 1. Skala Ayarlarını Oku ve Klinik Değerlere Dönüştür
-            const sizeScale = document.getElementById('size-scale').value;
-            const speedScale = document.getElementById('speed-scale').value;
+            // 1. Skalalardan Verileri Al ve Kesin Olarak Uygula
+            const sizeValue = parseInt(document.getElementById('size-scale').value);
+            const speedValue = parseInt(document.getElementById('speed-scale').value);
 
-            // Küre Yarıçapı Hesaplama (Skala 1 için = 0.08 [Zor], Skala 10 için = 0.35 [Kolay])
-            const calculatedRadius = 0.05 + (sizeScale * 0.03);
-            targetEntity.setAttribute('geometry', 'radius', calculatedRadius);
+            // Küre Boyutu Ayarı (1 = 0.08 [Çok Küçük], 10 = 0.35 [Çok Büyük])
+            const targetRadius = 0.05 + (sizeValue * 0.03);
+            targetEntity.setAttribute('geometry', 'radius', targetRadius);
 
-            // BPM Hesaplama (Skala 1 = 40 BPM [Çok yavaş], Skala 10 = 95 BPM [Hızlı])
-            bpm = 35 + (speedScale * 6);
+            // Hız Ayarı (1 = 40 BPM, 10 = 95 BPM)
+            bpm = 35 + (speedValue * 6);
 
-            // Arayüzü Kapat
+            // Arayüzü Kapat ve VR Modunu Hazırla
             document.getElementById('start-overlay').style.display = 'none';
             
-            // Sistemleri Başlat
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             isPlaying = true;
+            startTime = performance.now();
 
-            // Metronom Zamanlaması
+            // Metronom Ses Döngüsü
             const intervalTime = (60 / bpm) * 1000;
             metronomeId = setInterval(playMetronomeTick, intervalTime);
 
-            // Skor ve Zamanlayıcı Döngüleri
-            scoreId = setInterval(checkScore, 100);
-            countdownId = setInterval(updateTimer, 1000);
+            // Skor Hesaplama Döngüsü (Her 50ms'de bir kontrol)
+            scoreId = setInterval(checkScore, 50);
 
-            animateTarget();
+            // Ana Animasyon ve Süre Kontrol Döngüsünü Başlat
+            renderLoop();
         }
 
         function checkScore() {
             if (isPlaying && isTargetHovered) {
                 score += 1;
-                vrScoreDisplay.setAttribute('value', `Skor: ${score}`);
             }
-        }
-
-        // 30 Saniyelik Geri Sayım ve Otomatik Kapanış Algoritması
-        function updateTimer() {
-            if (!isPlaying) return;
-            
-            timeLeft--;
-            vrTimerDisplay.setAttribute('value', `Sure: ${timeLeft}`);
-
-            if (timeLeft <= 0) {
-                endSession();
-            }
-        }
-
-        // Seans Bitimi: Her şeyi durdur ve hastaya sonucu göster
-        function endSession() {
-            isPlaying = false;
-            clearInterval(countdownId);
-            clearInterval(metronomeId);
-            clearInterval(scoreId);
-            
-            // VR modundan çıkış yapılması ve sonuç ekranının açılması
-            document.exitPointerLock?.();
-            
-            const overlay = document.getElementById('start-overlay');
-            overlay.innerHTML = `
-                <h2>Egzersiz Tamamlandı!</h2>
-                <p style="font-size: 1.5rem; color: #ffcc00; margin: 20px 0;">Toplam Skorunuz: ${score}</p>
-                <p>Yeni bir seans için sayfayı yenileyebilirsiniz.</p>
-                <button class="btn" onclick="window.location.reload()">Yeniden Başlat</button>
-            `;
-            overlay.style.display = 'flex';
         }
 
         function playMetronomeTick() {
@@ -243,23 +209,59 @@
             osc.stop(audioCtx.currentTime + 0.06);
         }
 
-        // Hem Sağa-Sola Hem Yukarı-Aşağı Hareket (Lissajous Eğrisi / Sonsuzluk Döngüsü benzeri)
-        function animateTarget() {
+        // Ana Render Döngüsü: Süre Kontrolü, Halka Küçülmesi ve 2 Eksenli Hareket
+        function renderLoop() {
             if (!isPlaying) return;
 
-            const time = performance.now() * 0.0015 * (bpm / 60);
-            
-            // Yatayda Sinüs dalgası (Sağa sola salınım)
-            let currentX = Math.sin(time) * maxAmplitudeX;
-            
-            // Dikeyde Kosinüs dalgası (Yukarı aşağı salınım)
-            // Çarpanı (2 * time) yaparak topun bir "8" veya sonsuzluk işareti çizmesini sağladık.
-            // Bu, kafa koordinasyonunu kombine çalıştırmak için harika bir nörolojik egzersizdir.
-            let currentY = 1.6 + (Math.cos(time * 2) * maxAmplitudeY);
+            // 1. Hassas Süre Hesabı
+            let currentTime = performance.now();
+            let elapsedTime = (currentTime - startTime) / 1000; // Saniyeye çevir
+            let timeLeft = runDuration - elapsedTime;
 
+            if (timeLeft <= 0) {
+                timeLeft = 0;
+                endSession();
+                return;
+            }
+
+            // 2. Zamanlayıcı Halkasını Küçültme (Görsel Zaman Göstergesi)
+            let progress = timeLeft / runDuration; // 1 ile 0 arasında değişir
+            let currentRingRadiusOuter = 0.01 + (progress * 0.025);
+            timerRingEntity.setAttribute('geometry', 'radiusOuter', currentRingRadiusOuter);
+
+            // 3. Hem Sağa-Sola Hem Yukarı-Aşağı "8" (Sonsuzluk) Hareketi
+            const timeFactor = elapsedTime * 1.5 * (bpm / 60);
+            
+            // X ekseni (Yatay salınım)
+            let currentX = Math.sin(timeFactor) * maxAmplitudeX;
+            
+            // Y ekseni (Dikey salınım) - Frekans 2 katı yapılarak sonsuzluk eğrisi çizdirilir
+            let currentY = 1.6 + (Math.sin(timeFactor * 2) * maxAmplitudeY);
+
+            // Kürenin Pozisyonunu Güncelle
             targetEntity.setAttribute('position', `${currentX} ${currentY} -3`);
 
-            requestAnimationFrame(animateTarget);
+            // Bir sonraki kareyi çağır
+            requestAnimationFrame(renderLoop);
+        }
+
+        // Seans Bitiş Senaryosu
+        function endSession() {
+            isPlaying = false;
+            clearInterval(metronomeId);
+            clearInterval(scoreId);
+            
+            // VR modundan çıkışı zorla
+            document.exitPointerLock?.();
+            
+            const overlay = document.getElementById('start-overlay');
+            overlay.innerHTML = `
+                <h2 style="color: #ffcc00;">Egzersiz Tamamlandı</h2>
+                <p style="font-size: 1.6rem; margin: 20px 0;">Toplam Başarı Skoru: <strong style="color:#58a6ff;">${score}</strong></p>
+                <p style="color: #8b949e; max-width:400px;">Seçilen Ayarlar:<br>Top Büyüklüğü Skalası: ${document.getElementById('size-scale').value}/10<br>Hız Skalası: ${document.getElementById('speed-scale').value}/10 (${bpm} BPM)</p>
+                <button class="btn" onclick="window.location.reload()">Yeni Seans Başlat</button>
+            `;
+            overlay.style.display = 'flex';
         }
     </script>
 </body>
