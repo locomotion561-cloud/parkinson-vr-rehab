@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Parkinson VR - Ritmik Rehabilitasyon v2.0</title>
+    <title>Parkinson VR - Ritmik Rehabilitasyon v2.5</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <style>
         #start-overlay {
@@ -69,21 +69,21 @@
         <p style="color: #8b949e; margin-bottom: 25px;">Parametreleri hastanın klinik durumuna göre ayarlayın.</p>
         
         <div class="setup-group">
-            <label for="size-scale">Top Büyüklüğü (Tolerans): 1 - 10</label>
+            <label for="size-scale">Top Büyüklüğü (Görüş Alanı): 1 - 10</label>
             <input type="range" id="size-scale" min="1" max="10" value="5">
-            <div class="range-labels"><span>1 (Zor / Küçük)</span><span>10 (Kolay / Büyük)</span></div>
+            <div class="range-labels"><span>1 (%1 - Çok Küçük)</span><span>10 (%10 - Çok Büyük)</span></div>
         </div>
 
         <div class="setup-group">
             <label for="speed-scale">Ritim ve Hareket Hızı: 1 - 10</label>
             <input type="range" id="speed-scale" min="1" max="10" value="5">
-            <div class="range-labels"><span>1 (Yavaş / Rijidite İçin)</span><span>10 (Hızlı / Dinamik)</span></div>
+            <div class="range-labels"><span>1 (Yavaş)</span><span>10 (Hızlı)</span></div>
         </div>
 
         <button class="btn" onclick="startApp()">Egzersizi Başlat (30 Saniye)</button>
     </div>
 
-    <a-scene>
+    <a-scene id="main-scene">
         
         <a-sky color="#0a0c10"></a-sky>
         <a-grid color="#161b22"></a-grid>
@@ -132,61 +132,69 @@
         let audioCtx;
         let isPlaying = false;
         let bpm = 60;
-        let runDuration = 30; // Toplam süre 30 saniye
+        let runDuration = 30; 
         let startTime = 0;
         
         let metronomeId, scoreId;
         
+        const sceneEntity = document.getElementById('main-scene');
         const targetEntity = document.getElementById('rhythm-target');
         const raycasterEntity = document.getElementById('gaze-raycaster');
         const centerPointEntity = document.getElementById('gaze-center-point');
         const timerRingEntity = document.getElementById('gaze-timer-ring');
 
-        let maxAmplitudeX = 1.8; // Yatay genişlik bound
-        let maxAmplitudeY = 0.7; // Dikey yükseklik bound
+        let maxAmplitudeX = 1.8; 
+        let maxAmplitudeY = 0.7; 
         let score = 0;
         let isTargetHovered = false;
 
-        // Hedef Yakalama ve Biofeedback Tetikleyicileri
+        // İsabet Kontrolleri
         raycasterEntity.addEventListener('raycaster-intersection', function () {
             isTargetHovered = true;
-            targetEntity.setAttribute('material', 'color', '#388bfd'); // İsabet halinde mavi olur
-            centerPointEntity.setAttribute('material', 'color', '#00ff00'); // İmleç yeşile döner
+            targetEntity.setAttribute('material', 'color', '#388bfd'); 
+            centerPointEntity.setAttribute('material', 'color', '#00ff00'); 
         });
 
         raycasterEntity.addEventListener('raycaster-intersection-cleared', function () {
             isTargetHovered = false;
-            targetEntity.setAttribute('material', 'color', '#00ff00'); // Kaçarsa yeşile döner
-            centerPointEntity.setAttribute('material', 'color', '#ff3333'); // İmleç kırmızıya döner
+            targetEntity.setAttribute('material', 'color', '#00ff00'); 
+            centerPointEntity.setAttribute('material', 'color', '#ff3333'); 
         });
 
         function startApp() {
-            // 1. Skalalardan Verileri Al ve Kesin Olarak Uygula
             const sizeValue = parseInt(document.getElementById('size-scale').value);
             const speedValue = parseInt(document.getElementById('speed-scale').value);
 
-            // Küre Boyutu Ayarı (1 = 0.08 [Çok Küçük], 10 = 0.35 [Çok Büyük])
-            const targetRadius = 0.05 + (sizeValue * 0.03);
+            // Küre Boyut Formülü (Skala 1 = 0.03 [Ekranın %1'i], Skala 10 = 0.45 [Ekranın %10'undan fazla])
+            // Farkı hissedilir kılmak için doğrusal değil katlanarak artan (eksponansiyel) bir ölçek kullandım.
+            const targetRadius = 0.015 + (Math.pow(sizeValue, 1.5) * 0.0135);
             targetEntity.setAttribute('geometry', 'radius', targetRadius);
 
-            // Hız Ayarı (1 = 40 BPM, 10 = 95 BPM)
+            // Hız Ayarı
             bpm = 35 + (speedValue * 6);
 
-            // Arayüzü Kapat ve VR Modunu Hazırla
+            // Arayüzü Kapat
             document.getElementById('start-overlay').style.display = 'none';
+            
+            // --- VR BOX İÇİN EKRANI OTOMATİK İKİYE BÖLME KOMUTU ---
+            // Tarayıcı hazır olur olmaz sahneyi doğrudan VR Stereoscopic moduna geçmeye zorlar
+            if (sceneEntity.hasLoaded) {
+                sceneEntity.enterVR();
+            } else {
+                sceneEntity.addEventListener('loaded', function () {
+                    sceneEntity.enterVR();
+                });
+            }
+            // -----------------------------------------------------
             
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             isPlaying = true;
             startTime = performance.now();
 
-            // Metronom Ses Döngüsü
             const intervalTime = (60 / bpm) * 1000;
             metronomeId = setInterval(playMetronomeTick, intervalTime);
-
-            // Skor Hesaplama Döngüsü (Her 50ms'de bir kontrol)
             scoreId = setInterval(checkScore, 50);
 
-            // Ana Animasyon ve Süre Kontrol Döngüsünü Başlat
             renderLoop();
         }
 
@@ -209,13 +217,11 @@
             osc.stop(audioCtx.currentTime + 0.06);
         }
 
-        // Ana Render Döngüsü: Süre Kontrolü, Halka Küçülmesi ve 2 Eksenli Hareket
         function renderLoop() {
             if (!isPlaying) return;
 
-            // 1. Hassas Süre Hesabı
             let currentTime = performance.now();
-            let elapsedTime = (currentTime - startTime) / 1000; // Saniyeye çevir
+            let elapsedTime = (currentTime - startTime) / 1000; 
             let timeLeft = runDuration - elapsedTime;
 
             if (timeLeft <= 0) {
@@ -224,35 +230,27 @@
                 return;
             }
 
-            // 2. Zamanlayıcı Halkasını Küçültme (Görsel Zaman Göstergesi)
-            let progress = timeLeft / runDuration; // 1 ile 0 arasında değişir
+            let progress = timeLeft / runDuration; 
             let currentRingRadiusOuter = 0.01 + (progress * 0.025);
             timerRingEntity.setAttribute('geometry', 'radiusOuter', currentRingRadiusOuter);
 
-            // 3. Hem Sağa-Sola Hem Yukarı-Aşağı "8" (Sonsuzluk) Hareketi
+            // Sonsuzluk (8) Hareketi
             const timeFactor = elapsedTime * 1.5 * (bpm / 60);
-            
-            // X ekseni (Yatay salınım)
             let currentX = Math.sin(timeFactor) * maxAmplitudeX;
-            
-            // Y ekseni (Dikey salınım) - Frekans 2 katı yapılarak sonsuzluk eğrisi çizdirilir
             let currentY = 1.6 + (Math.sin(timeFactor * 2) * maxAmplitudeY);
 
-            // Kürenin Pozisyonunu Güncelle
             targetEntity.setAttribute('position', `${currentX} ${currentY} -3`);
 
-            // Bir sonraki kareyi çağır
             requestAnimationFrame(renderLoop);
         }
 
-        // Seans Bitiş Senaryosu
         function endSession() {
             isPlaying = false;
             clearInterval(metronomeId);
             clearInterval(scoreId);
             
-            // VR modundan çıkışı zorla
-            document.exitPointerLock?.();
+            // VR Modundan Çıkış Yap
+            sceneEntity.exitVR();
             
             const overlay = document.getElementById('start-overlay');
             overlay.innerHTML = `
