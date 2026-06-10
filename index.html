@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parkinson VR - Ritmik Kafa Takip Rehabilitasyonu</title>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <style>
+        /* Ekranın üstünde duracak olan başlatma butonu tasarımı */
+        #start-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        .btn {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="start-overlay">
+        <h2>Parkinson Ritmik Egzersiz Platformu</h2>
+        <p>Lütfen kulaklığınızı takın ve hazır olduğunuzda butona basın.</p>
+        <button class="btn" onclick="startApp()">Egzersizi Başlat</button>
+    </div>
+
+    <a-scene sethandler>
+        
+        <a-sky color="#0d1117"></a-sky>
+        <a-grid color="#21262d"></a-grid>
+
+        <a-entity camera look-controls position="0 1.6 0">
+            <a-cursor 
+                id="gaze-cursor"
+                animation__click="property: scale; startEvents: click; easing: easeInCasing; duration: 150; from: 0.1 0.1 0.1; to: 1 1 1"
+                animation__fusing="property: scale; startEvents: fusing; easing: easeInCasing; duration: 1500; from: 1 1 1; to: 0.1 0.1 0.1"
+                event-set__mouseenter="_event: mouseenter; color: #00ff00"
+                event-set__mouseleave="_event: mouseleave; color: #ff0000"
+                raycaster="objects: .targetable"
+                position="0 0 -1"
+                geometry="primitive: ring; radiusInner: 0.015; radiusOuter: 0.025"
+                material="color: #ff0000; shader: flat; opacity: 0.8">
+            </a-cursor>
+        </a-entity>
+
+        <a-entity 
+            id="track-line"
+            geometry="primitive: box; width: 4; height: 0.05; depth: 0.01" 
+            material="color: #388bfd; opacity: 0.4; shader: flat" 
+            position="0 1.6 -3">
+        </a-entity>
+
+        <a-entity 
+            id="rhythm-target"
+            class="targetable"
+            geometry="primitive: sphere; radius: 0.15" 
+            material="color: #00ff00; shader: flat" 
+            position="0 1.6 -3">
+        </a-entity>
+
+    </a-scene>
+
+    <script>
+        let audioCtx;
+        let isPlaying = false;
+        let bpm = 60; // Dakikadaki vuruş sayısı (Klinik ihtiyaca göre değiştirilebilir)
+        let intervalId;
+        
+        const targetEntity = document.getElementById('rhythm-target');
+        let direction = 1; // 1: Sağa doğru, -1: Sola doğru hareket
+        let maxAmplitude = 1.8; // Çizgi üzerinde sağa-sola kayma sınırı
+        let currentX = 0;
+
+        // Uygulamayı ve Ses Altyapısını Başlatan Fonksiyon
+        function startApp() {
+            document.getElementById('start-overlay').style.display = 'none';
+            
+            // Web Audio API başlatılıyor (Tarayıcı güvenlik izni için kullanıcı etkileşimi şarttır)
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            isPlaying = true;
+
+            // Metronom ritmini başlat (BPM'e göre milisaniye hesaplama)
+            const intervalTime = (60 / bpm) * 1000;
+            intervalId = setInterval(playMetronomeTick, intervalTime);
+
+            // Kürenin pürüzsüz hareketi için render döngüsünü başlat
+            animateTarget();
+        }
+
+        // Klinik Metronom Sesi (Kısa ve net bir "Tık" sesi üretir)
+        function playMetronomeTick() {
+            if (!audioCtx) return;
+
+            let osc = audioCtx.createOscillator();
+            let gainNode = audioCtx.createGain();
+
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            // Farklı bir frekansla ayırt edici net bir ses tonu (800Hz)
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime); 
+            
+            // Sesin çok kısa sürmesi ve hemen sönümlenmesi için (Zil/Tık efekti)
+            gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+
+            osc.start(audioCtx.currentTime);
+            osc.stop(audioCtx.currentTime + 0.06);
+
+            // Ritme göre yön değiştirme (Metronom tık yaptığında küre yön değiştirir veya zirveye ulaşır)
+            direction *= -1;
+        }
+
+        // Hedef Kürenin Çizgi Üzerinde Sinüzoidal / Pürüzsüz Hareketi
+        function animateTarget() {
+            if (!isPlaying) return;
+
+            // Zaman bazlı pürüzsüz bir salınım (Matematiksel Sinüs dalgası kullanımı)
+            const time = performance.now() * 0.002 * (bpm / 60);
+            currentX = Math.sin(time) * maxAmplitude;
+
+            // Kürenin yeni pozisyonunu güncelle (Yüksekliği göz seviyesinde [1.6], uzaklığı [ -3 ])
+            targetEntity.setAttribute('position', `${currentX} 1.6 -3`);
+
+            // Tarayıcının bir sonraki karesinde fonksiyonu tekrar çağır (Akıcı 60 FPS için)
+            requestAnimationFrame(animateTarget);
+        }
+    </script>
+</body>
+</html>
