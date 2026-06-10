@@ -3,235 +3,324 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Parkinson VR - Ritmik Uçuş v4.2</title>
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Parkinson VR - 1944 Retro Rehabilitasyon</title>
     <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: Arial, sans-serif; }
+        
+        /* Giriş Paneli */
         #start-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: #0d1117;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 20px;
-            box-sizing: border-box;
+            background: #0d1117; z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            color: white; text-align: center; padding: 20px;
         }
         .setup-group {
-            margin: 20px 0;
-            background: rgba(255, 255, 255, 0.08);
-            padding: 20px;
-            border-radius: 12px;
-            width: 85%;
-            max-width: 400px;
+            margin: 15px 0; background: rgba(255, 255, 255, 0.08);
+            padding: 15px; border-radius: 12px; width: 85%; max-width: 400px;
         }
-        .setup-group label {
-            display: block;
-            margin-bottom: 10px;
-            font-weight: bold;
-            font-size: 1.1rem;
-            color: #58a6ff;
-        }
-        .setup-group input {
-            width: 100%;
-            height: 10px;
-            cursor: pointer;
-        }
-        .range-labels {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.85rem;
-            color: #8b949e;
-            margin-top: 8px;
-        }
+        .setup-group label { display: block; margin-bottom: 8px; font-weight: bold; color: #58a6ff; }
+        .setup-group input { width: 100%; cursor: pointer; }
+        .range-labels { display: flex; justify-content: space-between; font-size: 0.8rem; color: #8b949e; margin-top: 5px; }
         .btn {
-            padding: 18px 45px;
-            font-size: 1.4rem;
-            background-color: #238636;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 25px;
-            font-weight: bold;
+            padding: 15px 40px; font-size: 1.3rem; background-color: #238636;
+            color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 20px; font-weight: bold;
+        }
+
+        /* VR Box İçin Ekranı Tam Ortadan İkiye Bölen Yapı */
+        #vr-container {
+            display: none; width: 100%; height: 100%; position: relative;
+        }
+        .screen-half {
+            width: 50%; height: 100%; float: left; position: relative; overflow: hidden;
+            border-right: 1px solid #111; /* Orta çizgi ayrımı */
+        }
+        canvas {
+            width: 100%; height: 100%; background: #0b111e; display: block;
         }
     </style>
 </head>
 <body>
 
     <div id="start-overlay">
-        <h2 style="margin-bottom: 5px; color: #58a6ff;">Klinik Uçuş Modu v4.2</h2>
-        <p style="color: #8b949e; margin-bottom: 25px;">Uçağı başınızla yönetip kırmızı halkaların içinden geçin.</p>
+        <h2>1944 Parkinson VR Egzersizi</h2>
+        <p style="color: #8b949e; margin-bottom: 20px; max-width: 350px;">
+            Cihazı VR Box'a koyun. Başınızı eğerek uçağı kontrol edin, yukardan gelen engellerden kaçın!
+        </p>
         
         <div class="setup-group">
-            <label for="size-scale">Geçiş Halkası Genişliği: 1 - 10</label>
+            <label for="size-scale">Uçak Büyüklüğü (Ekran Alanı)</label>
             <input type="range" id="size-scale" min="1" max="10" value="5">
-            <div class="range-labels"><span>1 (Dar / Zor)</span><span>10 (Geniş / Kolay)</span></div>
+            <div class="range-labels"><span>1 (%5 Dar Alan)</span><span>10 (%20 Geniş Alan)</span></div>
         </div>
 
         <div class="setup-group">
-            <label for="speed-scale">Engel Geliş Ritmi (BPM): 1 - 10</label>
+            <label for="speed-scale">Ritim ve Engel Hızı (BPM)</label>
             <input type="range" id="speed-scale" min="1" max="10" value="4">
-            <div class="range-labels"><span>1 (Yavaş)</span><span>10 (Hızlı)</span></div>
+            <div class="range-labels"><span>1 (Yavaş / 40 BPM)</span><span>10 (Hızlı / 85 BPM)</span></div>
         </div>
 
-        <button class="btn" onclick="startApp()">Uçuşu Başlat (30 Saniye)</button>
+        <button class="btn" onclick="requestPermissions()">Egzersizi Başlat</button>
     </div>
 
-    <a-scene id="main-scene">
-        <a-sky color="#05070a"></a-sky>
-        <a-grid color="#1f242c"></a-grid>
-
-        <a-entity id="player-rig" camera look-controls position="0 1.6 0">
-            
-            <a-entity id="player-airplane" position="0 -0.25 -1" rotation="0 180 0">
-                <a-cone radius-bottom="0.03" radius-top="0.001" height="0.15" material="color: #58a6ff; shader: flat" rotation="90 0 0"></a-cone>
-                <a-triangle vertex-a="0 0 0" vertex-b="0.09 -0.05 -0.02" vertex-c="0 -0.05 0.05" material="color: #388bfd; shader: flat"></a-triangle>
-                <a-triangle vertex-a="0 0 0" vertex-b="-0.09 -0.05 -0.02" vertex-c="0 -0.05 0.05" material="color: #388bfd; shader: flat"></a-triangle>
-                <a-sphere radius="0.01" position="0 0.01 -0.03" material="color: #ffffff; shader: flat"></a-sphere>
-            </a-entity>
-
-            <a-entity 
-                id="gaze-timer-ring"
-                geometry="primitive: ring; radiusInner: 0.03; radiusOuter: 0.035"
-                material="color: #ffcc00; shader: flat; opacity: 0.4"
-                position="0 0 -0.99">
-            </a-entity>
-        </a-entity>
-
-        <a-entity id="obstacle-container"></a-entity>
-    </a-scene>
+    <div id="vr-container">
+        <div class="screen-half"><canvas id="leftCanvas"></canvas></div>
+        <div class="screen-half"><canvas id="rightCanvas"></canvas></div>
+    </div>
 
     <script>
         let audioCtx;
         let isPlaying = false;
         let bpm = 60;
-        let runDuration = 30; 
+        let runDuration = 30; // 30 saniye
         let startTime = 0;
         let metronomeId;
-        
-        const sceneEntity = document.getElementById('main-scene');
-        const containerEntity = document.getElementById('obstacle-container');
-        const timerRingEntity = document.getElementById('gaze-timer-ring');
-        const airplaneEntity = document.getElementById('player-airplane');
-        const cameraRig = document.getElementById('player-rig');
-
         let score = 0;
+
+        const leftCanvas = document.getElementById('leftCanvas');
+        const rightCanvas = document.getElementById('rightCanvas');
+        const leftCtx = leftCanvas.getContext('2d');
+        const rightCtx = rightCanvas.getContext('2d');
+
+        // Uçak ve Engel Parametreleri
+        let airplane = { x: 0.5, y: 0.75, width: 0.1, height: 0.1 }; // Normalize koordinatlar (0-1 arası)
         let obstacles = [];
-        let obstacleSpeed = 0.18; 
-        let obstacleSizeFactor = 1.0;
+        let planeAreaPercent = 0.05; // Varsayılan ekran alanı kaplaması
+        let obstacleSpeedBase = 0.003;
+
+        // Jiroskop / Yönelim Verileri
+        let deviceTiltX = 0;
+        let deviceTiltY = 0;
+
+        // iOS ve Android için Jiroskop/Hızölçer İzin İsteme Mekanizması
+        function requestPermissions() {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(permissionState => {
+                        if (permissionState === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation);
+                            startApp();
+                        } else {
+                            alert('Jiroskop izni reddedildi. Oyun kafa hareketiyle çalışamaz.');
+                        }
+                    })
+                    .catch(console.error);
+            } else {
+                // Android veya İzin istemeyen tarayıcılar
+                window.addEventListener('deviceorientation', handleOrientation);
+                startApp();
+            }
+        }
+
+        function handleOrientation(event) {
+            // Cihazın sağa-sola eğilmesi (gamma) ve öne-arkaya eğilmesi (beta) değerlerini alıp yumuşatıyoruz
+            // VR Box dikey duracağı için beta ve gamma eksenlerini hastanın baş rotasyonuna göre kalibre ediyoruz
+            let rawX = event.gamma; // Sağa sola yatırma (-90 ile 90 arası)
+            let rawY = event.beta;  // Öne arkaya yatırma
+
+            // Tolerans ve hassasiyet ayarı
+            deviceTiltX = (rawX / 25); 
+            deviceTiltY = ((rawY - 45) / 25); // 45 dereceyi nötr varsayıyoruz
+        }
 
         function startApp() {
             const sizeValue = parseInt(document.getElementById('size-scale').value);
             const speedValue = parseInt(document.getElementById('speed-scale').value);
 
-            obstacleSizeFactor = 2.2 - (sizeValue * 0.16); 
+            // 1. Ekran alanı ayarı (%5 ile %20 arası alan hesabı)
+            planeAreaPercent = 0.05 + ((sizeValue - 1) * 0.0166); 
+
+            // 2. Ritim ayarı
             bpm = 40 + (speedValue * 5);
 
             document.getElementById('start-overlay').style.display = 'none';
-            
-            // VR Modunu Zorla Açma
-            if (sceneEntity.hasLoaded) { sceneEntity.enterVR(); } 
-            else { sceneEntity.addEventListener('loaded', () => sceneEntity.enterVR()); }
-            
+            document.getElementById('vr-container').style.display = 'block';
+
+            // Canvas Boyutlarını Ekran Yarısına Eşitleme
+            resizeCanvases();
+            window.addEventListener('resize', resizeCanvases);
+
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             isPlaying = true;
             startTime = performance.now();
 
+            // Metronom ritmine bağlı engel üretimi
             const intervalTime = (60 / bpm) * 1000;
-            metronomeId = setInterval(playTickAndSpawn, intervalTime);
+            metronomeId = setInterval(playTickAndSpawnObstacle, intervalTime);
 
-            renderLoop();
+            // Ana oyun döngüsünü başlat
+            requestAnimationFrame(gameLoop);
         }
 
-        function playTickAndSpawn() {
+        function resizeCanvases() {
+            leftCanvas.width = leftCanvas.parentElement.clientWidth;
+            leftCanvas.height = leftCanvas.parentElement.clientHeight;
+            rightCanvas.width = rightCanvas.parentElement.clientWidth;
+            rightCanvas.height = rightCanvas.parentElement.clientHeight;
+        }
+
+        function playTickAndSpawnObstacle() {
             if (!isPlaying) return;
-            
-            // Ses Çal
+
+            // Ritmik Ses
             if (audioCtx) {
                 let osc = audioCtx.createOscillator();
                 let gainNode = audioCtx.createGain();
                 osc.connect(gainNode); gainNode.connect(audioCtx.destination);
-                osc.frequency.setValueAtTime(650, audioCtx.currentTime); 
-                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
                 osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.06);
             }
 
-            // Engel Üret
-            let obstacle = document.createElement('a-entity');
-            let randomX = (Math.random() - 0.5) * 2.8;
-            let randomY = 1.6 + ((Math.random() - 0.5) * 1.4);
-            let startZ = -20;
-
-            obstacle.setAttribute('geometry', {
-                primitive: 'torus',
-                radius: 0.4 * obstacleSizeFactor,
-                radiusTubular: 0.03
+            // Yukarıdan (Ekranın üstünden) inecek engel kutusu üretme
+            let obsWidth = 0.15;
+            let obsHeight = 0.04;
+            obstacles.push({
+                x: Math.random() * (1 - obsWidth),
+                y: -obsHeight,
+                width: obsWidth,
+                height: obsHeight,
+                passed: false
             });
-            obstacle.setAttribute('material', 'color', '#ff3333; shader: flat; opacity: 0.8');
-            obstacle.setAttribute('position', `${randomX} ${randomY} ${startZ}`);
-            
-            containerEntity.appendChild(obstacle);
-            obstacles.push({ element: obstacle, x: randomX, y: randomY, z: startZ });
         }
 
-        function renderLoop() {
+        function gameLoop() {
             if (!isPlaying) return;
 
             let currentTime = performance.now();
-            let elapsedTime = (currentTime - startTime) / 1000; 
+            let elapsedTime = (currentTime - startTime) / 1000;
             let timeLeft = runDuration - elapsedTime;
 
-            if (timeLeft <= 0) { endSession(); return; }
+            if (timeLeft <= 0) {
+                endSession();
+                return;
+            }
 
-            timerRingEntity.setAttribute('geometry', 'radiusOuter', 0.01 + ((timeLeft / runDuration) * 0.025));
+            updateGameLogic();
+            drawScreens(timeLeft);
 
-            let cameraRotation = cameraRig.getAttribute('rotation');
-            airplaneEntity.setAttribute('rotation', `0 180 ${cameraRotation.y * 1.5}`);
+            requestAnimationFrame(gameLoop);
+        }
 
+        function updateGameLogic() {
+            // Kafa hareketine göre uçağın hızlanarak pozisyon değiştirmesi
+            airplane.x += deviceTiltX * 0.015;
+            airplane.y += deviceTiltY * 0.015;
+
+            // Ekran dışına çıkış engelleme (Sınırlandırma)
+            if (airplane.x < 0) airplane.x = 0;
+            if (airplane.x > 1 - airplane.width) airplane.x = 1 - airplane.width;
+            if (airplane.y < 0.2) airplane.y = 0.2; // Üst sınır
+            if (airplane.y > 0.9) airplane.y = 0.9; // Alt sınır
+
+            // Engelleri ritme göre aşağı kaydırma
+            let currentSpeed = obstacleSpeedBase * (bpm / 60) * 2;
             for (let i = obstacles.length - 1; i >= 0; i--) {
                 let obs = obstacles[i];
-                obs.z += (obstacleSpeed * (bpm / 60) * 1.5);
-                obs.element.setAttribute('position', `${obs.x} ${obs.y} ${obs.z}`);
+                obs.y += currentSpeed;
 
-                if (obs.z >= -1.2 && obs.z <= -0.8) {
-                    let playerX = -Math.sin(cameraRotation.y * Math.PI / 180) * 3;
-                    let playerY = 1.6 + (Math.sin(cameraRotation.x * Math.PI / 180) * 3);
-                    let distance = Math.sqrt(Math.pow(playerX - obs.x, 2) + Math.pow(playerY - obs.y, 2));
-                    
-                    if (distance < (0.4 * obstacleSizeFactor)) {
-                        score += 10;
-                        obs.element.setAttribute('material', 'color', '#00ff00');
-                    } else {
-                        obs.element.setAttribute('material', 'color', '#ffaa00');
+                // Çarpışma / Kaçış Kontrolü
+                if (!obs.passed && obs.y + obs.height >= airplane.y && obs.y <= airplane.y + airplane.height) {
+                    if (airplane.x + airplane.width >= obs.x && airplane.x <= obs.x + obs.width) {
+                        // Çarpışma oldu: Engel kırmızı kalır/Puan kırılır
+                        obs.passed = true;
+                        score = Math.max(0, score - 5);
                     }
                 }
 
-                if (obs.z > 1) {
-                    obs.element.parentNode?.removeChild(obs.element);
+                // Başarıyla altından kaçılan engeller
+                if (!obs.passed && obs.y > airplane.y + airplane.height) {
+                    obs.passed = true;
+                    score += 10;
+                }
+
+                // Ekrandan çıkan engelleri sil
+                if (obs.y > 1) {
                     obstacles.splice(i, 1);
                 }
             }
-            requestAnimationFrame(renderLoop);
+        }
+
+        // İki ekrana da aynı görüntüyü çizerek VR (Stereoscopic) derinlik sağlama
+        function drawScreens(timeLeft) {
+            drawSingleCanvas(leftCtx, leftCanvas.width, leftCanvas.height, timeLeft);
+            drawSingleCanvas(rightCtx, rightCanvas.width, rightCanvas.height, timeLeft);
+        }
+
+        function drawSingleCanvas(ctx, w, h, timeLeft) {
+            // Ekranı temizle
+            ctx.fillStyle = "#0c1322";
+            ctx.fillRect(0, 0, w, h);
+
+            // Arka Plan Çizgileri (Retro 1944 Akış Hissiyatı)
+            ctx.strokeStyle = "rgba(88, 166, 255, 0.05)";
+            ctx.lineWidth = 2;
+            for (let i = 0; i < w; i += 40) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, h); ctx.stroke();
+            }
+
+            // Alan skalasına göre dinamik uçak boyut hesaplaması
+            // Toplam alan = w * h. Uçağın alanı = w * h * planeAreaPercent
+            let planeSize = Math.sqrt(w * h * planeAreaPercent) * 0.5;
+            let pWidth = planeSize * 1.2;
+            let pHeight = planeSize;
+            
+            // Normalize koordinatları piksele dökme
+            let px = airplane.x * w;
+            let py = airplane.y * h;
+            airplane.width = pWidth / w;
+            airplane.height = pHeight / h;
+
+            // --- RETRO 1944 2. DÜNYA SAVAŞI UÇAĞI ÇİZİMİ (P-38 LIGHTNING) ---
+            ctx.fillStyle = "#8b949e"; // Askeri Gri Gövde
+            // Sol Motor Blogu
+            ctx.fillRect(px, py + pHeight*0.2, pWidth*0.15, pHeight*0.7);
+            // Sağ Motor Blogu
+            ctx.fillRect(px + pWidth*0.85, py + pHeight*0.2, pWidth*0.15, pHeight*0.7);
+            // Ana Gövde (Kokpit)
+            ctx.fillStyle = "#58a6ff";
+            ctx.fillRect(px + pWidth*0.4, py + pHeight*0.1, pWidth*0.2, pHeight*0.7);
+            // Kanatlar (Yatay Büyük Dikdörtgen)
+            ctx.fillStyle = "#388bfd";
+            ctx.fillRect(px, py + pHeight*0.4, pWidth, pHeight*0.15);
+            // Kuyruk Çıtası
+            ctx.fillStyle = "#8b949e";
+            ctx.fillRect(px + pWidth*0.1, py + pHeight*0.8, pWidth*0.8, pHeight*0.08);
+            // Pervaneler (Sarı uçlar)
+            ctx.fillStyle = "#ffcc00";
+            ctx.fillRect(px - 2, py + pHeight*0.15, pWidth*0.2, 4);
+            ctx.fillRect(px + pWidth*0.8, py + pHeight*0.15, pWidth*0.2, 4);
+
+            // Engelleri Çiz (Kırmızı Uçaksavar Ağları / Blokları)
+            for (let obs of obstacles) {
+                ctx.fillStyle = obs.passed ? "rgba(46, 160, 67, 0.4)" : "#ff3333";
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 2;
+                ctx.fillRect(obs.x * w, obs.y * h, obs.width * w, obs.height * h);
+                ctx.strokeRect(obs.x * w, obs.y * h, obs.width * w, obs.height * h);
+            }
+
+            // VR İçindeki Görsel Göstergeler (Her iki gözün üst köşesine sabitlenmiş)
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold " + Math.max(14, w*0.04) + "px monospace";
+            ctx.fillText("SKOR: " + score, 20, 40);
+            ctx.fillStyle = "#ffcc00";
+            ctx.fillText("SURE: " + Math.ceil(timeLeft), w - (w*0.3), 40);
         }
 
         function endSession() {
             isPlaying = false;
             clearInterval(metronomeId);
-            sceneEntity.exitVR();
             
+            document.getElementById('vr-container').style.display = 'none';
             const overlay = document.getElementById('start-overlay');
             overlay.innerHTML = `
-                <h2 style="color: #ffcc00;">Uçuş Tamamlandı</h2>
-                <p style="font-size: 1.6rem; margin: 20px 0;">Skor: <strong>${score}</strong></p>
+                <h2 style="color: #ffcc00;">Egzersiz Tamamlandı</h2>
+                <p style="font-size: 1.6rem; margin: 20px 0;">Toplam Başarı Skoru: <strong>${score}</strong></p>
+                <p style="color: #8b949e;">Uçağınız seçtiğiniz alana göre kalibre edildi.</p>
                 <button class="btn" onclick="window.location.reload()">Yeniden Başlat</button>
             `;
             overlay.style.display = 'flex';
