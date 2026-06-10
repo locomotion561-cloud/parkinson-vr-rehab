@@ -2,8 +2,11 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Parkinson VR - Ritmik Uçuş Egzersizi v4.0</title>
+    <title>Parkinson VR - Ritmik Uçuş v4.2</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <style>
         #start-overlay {
@@ -58,43 +61,40 @@
             cursor: pointer;
             margin-top: 25px;
             font-weight: bold;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
     </style>
 </head>
 <body>
 
     <div id="start-overlay">
-        <h2 style="margin-bottom: 5px;">Parkinson VR: Ritmik Uçuş</h2>
-        <p style="color: #8b949e; margin-bottom: 25px;">Uçağı başınızla yönlendirerek engellerden kaçın!</p>
+        <h2 style="margin-bottom: 5px; color: #58a6ff;">Klinik Uçuş Modu v4.2</h2>
+        <p style="color: #8b949e; margin-bottom: 25px;">Uçağı başınızla yönetip kırmızı halkaların içinden geçin.</p>
         
         <div class="setup-group">
-            <label for="size-scale">Güvenli Geçiş Alanı (Genişlik): 1 - 10</label>
+            <label for="size-scale">Geçiş Halkası Genişliği: 1 - 10</label>
             <input type="range" id="size-scale" min="1" max="10" value="5">
             <div class="range-labels"><span>1 (Dar / Zor)</span><span>10 (Geniş / Kolay)</span></div>
         </div>
 
         <div class="setup-group">
-            <label for="speed-scale">Engel Geliş Riti (BPM): 1 - 10</label>
+            <label for="speed-scale">Engel Geliş Ritmi (BPM): 1 - 10</label>
             <input type="range" id="speed-scale" min="1" max="10" value="4">
-            <div class="range-labels"><span>1 (Yavaş Ritim)</span><span>10 (Hızlı Ritim)</span></div>
+            <div class="range-labels"><span>1 (Yavaş)</span><span>10 (Hızlı)</span></div>
         </div>
 
-        <button class="btn" onclick="startApp()">Egzersizi Başlat (30 Saniye)</button>
+        <button class="btn" onclick="startApp()">Uçuşu Başlat (30 Saniye)</button>
     </div>
 
     <a-scene id="main-scene">
-        
         <a-sky color="#05070a"></a-sky>
-        
-        <a-grid color="#1f242c" position="0 0 0" rotation="0 0 0"></a-grid>
+        <a-grid color="#1f242c"></a-grid>
 
         <a-entity id="player-rig" camera look-controls position="0 1.6 0">
             
-            <a-entity id="player-airplane" position="0 -0.2 -1" rotation="0 180 0">
+            <a-entity id="player-airplane" position="0 -0.25 -1" rotation="0 180 0">
                 <a-cone radius-bottom="0.03" radius-top="0.001" height="0.15" material="color: #58a6ff; shader: flat" rotation="90 0 0"></a-cone>
-                <a-triangle vertex-a="0 0 0" vertex-b="0.08 -0.05 -0.02" vertex-c="0 -0.05 0.05" material="color: #388bfd; shader: flat"></a-triangle>
-                <a-triangle vertex-a="0 0 0" vertex-b="-0.08 -0.05 -0.02" vertex-c="0 -0.05 0.05" material="color: #388bfd; shader: flat"></a-triangle>
+                <a-triangle vertex-a="0 0 0" vertex-b="0.09 -0.05 -0.02" vertex-c="0 -0.05 0.05" material="color: #388bfd; shader: flat"></a-triangle>
+                <a-triangle vertex-a="0 0 0" vertex-b="-0.09 -0.05 -0.02" vertex-c="0 -0.05 0.05" material="color: #388bfd; shader: flat"></a-triangle>
                 <a-sphere radius="0.01" position="0 0.01 -0.03" material="color: #ffffff; shader: flat"></a-sphere>
             </a-entity>
 
@@ -104,11 +104,9 @@
                 material="color: #ffcc00; shader: flat; opacity: 0.4"
                 position="0 0 -0.99">
             </a-entity>
-
         </a-entity>
 
         <a-entity id="obstacle-container"></a-entity>
-
     </a-scene>
 
     <script>
@@ -117,8 +115,7 @@
         let bpm = 60;
         let runDuration = 30; 
         let startTime = 0;
-        
-        let metronomeId, obstacleSpawnerId;
+        let metronomeId;
         
         const sceneEntity = document.getElementById('main-scene');
         const containerEntity = document.getElementById('obstacle-container');
@@ -128,57 +125,51 @@
 
         let score = 0;
         let obstacles = [];
-        let obstacleSpeed = 0.15; // Engellerin bize doğru gelme hızı
+        let obstacleSpeed = 0.18; 
         let obstacleSizeFactor = 1.0;
 
         function startApp() {
             const sizeValue = parseInt(document.getElementById('size-scale').value);
             const speedValue = parseInt(document.getElementById('speed-scale').value);
 
-            // Giriş skalasına göre engellerin ortasındaki boş geçiş alanını belirleme
-            // Skala 10 ise engeller küçük olur (kaçması kolay), skala 1 ise engeller devasa olur (kaçması zor)
             obstacleSizeFactor = 2.2 - (sizeValue * 0.16); 
-
-            // Ritim ve Engel Üretim Hızı (Skala 1 = 45 BPM, Skala 10 = 90 BPM)
             bpm = 40 + (speedValue * 5);
 
             document.getElementById('start-overlay').style.display = 'none';
             
-            // Otomatik VR Çift Ekran Modu tetikleme
-            if (sceneEntity.hasLoaded) {
-                sceneEntity.enterVR();
-            } else {
-                sceneEntity.addEventListener('loaded', function () {
-                    sceneEntity.enterVR();
-                });
-            }
+            // VR Modunu Zorla Açma
+            if (sceneEntity.hasLoaded) { sceneEntity.enterVR(); } 
+            else { sceneEntity.addEventListener('loaded', () => sceneEntity.enterVR()); }
             
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             isPlaying = true;
             startTime = performance.now();
 
-            // Ritme tam bağlı metronome sesi ve eşzamanlı engel üretimi
             const intervalTime = (60 / bpm) * 1000;
             metronomeId = setInterval(playTickAndSpawn, intervalTime);
 
             renderLoop();
         }
 
-        // Metronom her vurduğunda hem ses çalar hem de uzakta ritmik bir engel yaratır
         function playTickAndSpawn() {
             if (!isPlaying) return;
             
-            // 1. Ritmik Ses (Metronom)
-            playAudioTick();
+            // Ses Çal
+            if (audioCtx) {
+                let osc = audioCtx.createOscillator();
+                let gainNode = audioCtx.createGain();
+                osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+                osc.frequency.setValueAtTime(650, audioCtx.currentTime); 
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+                osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.06);
+            }
 
-            // 2. Engel Oluşturma Algoritması
-            // Engel, hastanın uçağını kaçırması gereken kırmızı parlak bir halka (Torus) formatındadır
+            // Engel Üret
             let obstacle = document.createElement('a-entity');
-            
-            // Engelin geleceği rastgele X ve Y koordinatları (Sonsuzluk döngüsü sınırlarında)
             let randomX = (Math.random() - 0.5) * 2.8;
             let randomY = 1.6 + ((Math.random() - 0.5) * 1.4);
-            let startZ = -20; // 20 metre uzakta belirir
+            let startZ = -20;
 
             obstacle.setAttribute('geometry', {
                 primitive: 'torus',
@@ -189,27 +180,7 @@
             obstacle.setAttribute('position', `${randomX} ${randomY} ${startZ}`);
             
             containerEntity.appendChild(obstacle);
-            
-            // Takip listesine ekle
-            obstacles.push({
-                element: obstacle,
-                x: randomX,
-                y: randomY,
-                z: startZ
-            });
-        }
-
-        function playAudioTick() {
-            if (!audioCtx) return;
-            let osc = audioCtx.createOscillator();
-            let gainNode = audioCtx.createGain();
-            osc.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            osc.frequency.setValueAtTime(650, audioCtx.currentTime); 
-            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
-            osc.start(audioCtx.currentTime);
-            osc.stop(audioCtx.currentTime + 0.06);
+            obstacles.push({ element: obstacle, x: randomX, y: randomY, z: startZ });
         }
 
         function renderLoop() {
@@ -219,76 +190,49 @@
             let elapsedTime = (currentTime - startTime) / 1000; 
             let timeLeft = runDuration - elapsedTime;
 
-            if (timeLeft <= 0) {
-                endSession();
-                return;
-            }
+            if (timeLeft <= 0) { endSession(); return; }
 
-            // Süre halkasını küçült
-            let progress = timeLeft / runDuration; 
-            timerRingEntity.setAttribute('geometry', 'radiusOuter', 0.01 + (progress * 0.025));
+            timerRingEntity.setAttribute('geometry', 'radiusOuter', 0.01 + ((timeLeft / runDuration) * 0.025));
 
-            // --- KAFA TAKİBİ VE UÇAK ANİMASYONU ---
-            // Kameranın o anki rotasyonunu (bakış açısını) alıyoruz
             let cameraRotation = cameraRig.getAttribute('rotation');
-            
-            // Baş hareketine göre uçağa hafif bir yalpalama (tilt/roll) efekti veriyoruz (Görsel pürüzsüzlük)
-            let tiltZ = cameraRotation.y * 1.5;
-            airplaneEntity.setAttribute('rotation', `0 180 ${tiltZ}`);
+            airplaneEntity.setAttribute('rotation', `0 180 ${cameraRotation.y * 1.5}`);
 
-            // --- ENGEL HAREKETLERİ VE ÇARPIŞMA (COLLISION) KONTROLÜ ---
-            // Akıllı telefonlarda kasmaması için optimize edilmiş Z eksen matrisi
             for (let i = obstacles.length - 1; i >= 0; i--) {
                 let obs = obstacles[i];
-                
-                // Engeli uçağa doğru yaklaştır (Z ekseninde ilerletme)
                 obs.z += (obstacleSpeed * (bpm / 60) * 1.5);
                 obs.element.setAttribute('position', `${obs.x} ${obs.y} ${obs.z}`);
 
-                // Çarpışma Penceresi: Engel tam uçağın hizasına geldiğinde (Z ≈ -1)
                 if (obs.z >= -1.2 && obs.z <= -0.8) {
-                    // Kameranın (hastanın kafasının) o anki sanal X ve Y pozisyon tahmini
-                    // A-Frame kamerası rotasyonla çalıştığı için bakış açısı radyan değerine çevrilir
                     let playerX = -Math.sin(cameraRotation.y * Math.PI / 180) * 3;
                     let playerY = 1.6 + (Math.sin(cameraRotation.x * Math.PI / 180) * 3);
-
-                    // Matematiksel mesafe hesabı (Uçak ile halka merkezi arasındaki uzaklık)
                     let distance = Math.sqrt(Math.pow(playerX - obs.x, 2) + Math.pow(playerY - obs.y, 2));
                     
-                    // Eğer uçak halkanın içinden (boşluktan) geçtiyse BAŞARILI, halkaya çarptıysa SKOR YOK
-                    let safeZone = 0.4 * obstacleSizeFactor;
-                    if (distance < safeZone) {
-                        score += 10; // Başarılı geçiş ödülü
-                        obs.element.setAttribute('material', 'color', '#00ff00'); // Halkayı yeşil yap
+                    if (distance < (0.4 * obstacleSizeFactor)) {
+                        score += 10;
+                        obs.element.setAttribute('material', 'color', '#00ff00');
                     } else {
-                        obs.element.setAttribute('material', 'color', '#ffaa00'); // Hasar/Teğet rengi
+                        obs.element.setAttribute('material', 'color', '#ffaa00');
                     }
                 }
 
-                // Arkada kalan engelleri temizle (Telefon belleğini korumak için hayati önem taşır)
                 if (obs.z > 1) {
-                    obs.element.parentNode.removeChild(obs.element);
+                    obs.element.parentNode?.removeChild(obs.element);
                     obstacles.splice(i, 1);
                 }
             }
-
             requestAnimationFrame(renderLoop);
         }
 
         function endSession() {
             isPlaying = false;
             clearInterval(metronomeId);
-            
             sceneEntity.exitVR();
             
             const overlay = document.getElementById('start-overlay');
             overlay.innerHTML = `
-                <h2 style="color: #ffcc00;">Uçuş Görevi Raporu</h2>
-                <p style="font-size: 1.6rem; margin: 20px 0;">Toplanan Uçuş Skoru: <strong style="color:#58a6ff;">${score}</strong></p>
-                <p style="color: #8b949e; max-width:400px;">
-                    Egzersiz boyunca metronom ritmine uyarak kafa koordinasyonunu başarıyla çalıştırdınız.
-                </p>
-                <button class="btn" onclick="window.location.reload()">Yeni Uçuş Başlat</button>
+                <h2 style="color: #ffcc00;">Uçuş Tamamlandı</h2>
+                <p style="font-size: 1.6rem; margin: 20px 0;">Skor: <strong>${score}</strong></p>
+                <button class="btn" onclick="window.location.reload()">Yeniden Başlat</button>
             `;
             overlay.style.display = 'flex';
         }
